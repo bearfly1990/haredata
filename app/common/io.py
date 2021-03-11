@@ -16,11 +16,12 @@ Date          Author      Version    Description
 09/07/2018    xiche       1.2.0      add XmlUtils
 09/27/2018    xiche       1.2.1      add OSUtils.copydir to overwrite existed files
                                      add TxtUtils.write_str_append_to_file_first_line 
-08/25/2019    xiche       2.0.0      change folder                            
+08/25/2019    xiche       2.0.0      change folder
+03/11/2021    xiche       2.0.1      resource_path
 """
 
 import csv
-import os
+import os, sys
 import xml.etree.ElementTree as ET
 import shutil
 
@@ -44,7 +45,7 @@ class PathUtils:
     @staticmethod
     def check_make_dir_exist(filePath):
         fileDir = PathUtils.get_dir_name_from_full_path(filePath)
-        if(fileDir):
+        if (fileDir):
             if not os.path.exists(fileDir):
                 os.makedirs(fileDir)
 
@@ -54,7 +55,7 @@ class PathUtils:
         index1 = filePath.rfind("\\")
         index2 = filePath.rfind("/")
         index = index1 if index1 > index2 else index2
-        if(index > -1):
+        if (index > -1):
             fileDir = filePath[0:index]
         return fileDir
 
@@ -74,9 +75,17 @@ class PathUtils:
     @staticmethod
     def add_flag_to_file_name(file_name, flag):
         index = file_name.rfind(".")
-        if(index > -1):
+        if (index > -1):
             file_name = file_name[0:index] + '.' + flag + file_name[index:]
         return file_name
+
+    @staticmethod
+    def resource_path(relative_path):
+        if getattr(sys, 'frozen', False):  # 是否Bundle Resource
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.abspath(".")
+        return os.path.join(base_path, relative_path)
 
 
 class CSVUtils:
@@ -190,7 +199,7 @@ class TxtUtils:
         count = 0
         with open(file_path, newline='') as f:
             line = f.readline()
-            while(line):
+            while (line):
                 if str_contains.lower() in line.lower():
                     count += 1
                 line = f.readline()
@@ -210,16 +219,16 @@ class ConfigUtils:
 
         for index, line in enumerate(lines):
             is_section = "[" in line.strip().lower()
-            if(is_section and section.lower() in line.strip().lower()):
+            if (is_section and section.lower() in line.strip().lower()):
                 sec_expected = True
                 new_lines.append(line)
                 continue
-            if(sec_expected and key.lower() in line.lower()):
+            if (sec_expected and key.lower() in line.lower()):
                 key_expected = True
                 line = "{0}={1}\r\n".format(key, value)
                 new_lines.append(line)
                 continue
-            if(is_section and sec_expected and not key_expected):
+            if (is_section and sec_expected and not key_expected):
                 new_lines.append("{0}={1}\r\n".format(key, value))
                 sec_expected = False
                 key_expected = True
@@ -290,4 +299,4 @@ class XmlUtils:
 
 if __name__ == '__main__':
     XmlUtils.update_attrib_value_by_xpath('PAMJobScheduler.exe.config',
-                                 ".//appSettings/add[@key='startBasetime']", 'value', '2222')
+                                          ".//appSettings/add[@key='startBasetime']", 'value', '2222')

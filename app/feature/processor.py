@@ -495,21 +495,6 @@ class DataProcessor():
 
         data['level'] = [level]
         data['clip_flag'] = [clip_flag]
-        # data = {
-        #         '早稻': [df_process['早稻'].sum()],
-        #         '冬小麦': [df_process['冬小麦'].sum()],
-        #         '一季晚稻': [df_process['一季晚稻'].sum()],
-        #         '双季晚稻': [df_process['双季晚稻'].sum()],
-        #         '夏玉米': [df_process['夏玉米'].sum()],
-        #         '大麦': [df_process['大麦'].sum()],
-        #         '其他谷物': [df_process['其他谷物'].sum()],
-        #         '大豆': [df_process['大豆'].sum()],
-        #         '其他豆类': [df_process['其他豆类'].sum()],
-        #         '马铃薯': [df_process['马铃薯'].sum()],
-        #         '甘薯': [df_process['甘薯'].sum()],
-        #         'level': [level],
-        #         'clip_flag': [clip_flag]
-        #         }
         return pd.DataFrame(data)
 
     def summary_crops_city(self, df_process, level, clip_flag):
@@ -522,20 +507,6 @@ class DataProcessor():
                 df_output = df_process.groupby(['DSDM', 'DSMC'])[crop].sum()
                 df_output = pd.DataFrame(df_output)
                 df_output.reset_index(inplace=True)
-            # df_output = pd.merge(df_output, df_process.groupby(['DSDM', 'DSMC'])['一季晚稻'].sum(), how='inner',
-            #                      on=['DSDM', 'DSMC'])
-            # df_output = pd.merge(df_output, df_process.groupby(['DSDM', 'DSMC'])['双季晚稻'].sum(), how='inner',
-            #                      on=['DSDM', 'DSMC'])
-            # df_output = pd.merge(df_output, df_process.groupby(['DSDM', 'DSMC'])['其他谷物'].sum(), how='inner',
-            #                      on=['DSDM', 'DSMC'])
-            # df_output = pd.merge(df_output, df_process.groupby(['DSDM', 'DSMC'])['大豆'].sum(), how='inner',
-            #                      on=['DSDM', 'DSMC'])
-            # df_output = pd.merge(df_output, df_process.groupby(['DSDM', 'DSMC'])['其他豆类'].sum(), how='inner',
-            #                      on=['DSDM', 'DSMC'])
-            # df_output = pd.merge(df_output, df_process.groupby(['DSDM', 'DSMC'])['马铃薯'].sum(), how='inner',
-            #                      on=['DSDM', 'DSMC'])
-            # df_output = pd.merge(df_output, df_process.groupby(['DSDM', 'DSMC'])['甘薯'].sum(), how='inner',
-            #                      on=['DSDM', 'DSMC'])
 
         df_output['level'] = level
         df_output['clip_flag'] = clip_flag

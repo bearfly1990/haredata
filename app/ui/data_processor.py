@@ -8,6 +8,7 @@ from tkinter import *
 from app.common.tkinter import UIRoot
 from app.feature.processor import DataProcessor
 from app.common.log import logger
+from app.common.io import PathUtils
 from imgs.icon import Icon
 import base64
 import os
@@ -24,16 +25,17 @@ class DataProcessorUI(UIRoot):
         self.root.resizable(width=False, height=False)
         self.root.title("数据处理小工具")
 
-        with open('tmp.ico', 'wb') as tmp:
-            tmp.write(base64.b64decode(Icon().img))
-        self.root.iconbitmap('./tmp.ico')
-        os.remove('./tmp.ico')
+        # with open('tmp.ico', 'wb') as tmp:
+        #     tmp.write(base64.b64decode(Icon().img))
+        # self.root.iconbitmap('./tmp.ico')
+        # os.remove('./tmp.ico')
+        self.root.iconbitmap(PathUtils.resource_path('./imgs/logo.ico'))
         # self.root.iconbitmap('./imgs/login.ico')
-        # img_game = PhotoImage(file='./imgs/game.png')
-        # img_help = ImageTk.PhotoImage(file="./imgs/help.png")
+        img_game = PhotoImage(file=PathUtils.resource_path('./imgs/game.png'))
+        img_help = ImageTk.PhotoImage(file=PathUtils.resource_path("./imgs/help.png"))
         self.frame = self.create_new_frame()
-        # self.init_menu(img_game, img_help)
-        self.init_menu(None, None)
+        self.init_menu(img_game, img_help)
+        # self.init_menu(None, None)
         self.init_base_info()
         self.init_control_buttons()
         tk.mainloop()
@@ -46,15 +48,16 @@ class DataProcessorUI(UIRoot):
         menu1 = Menu(menu_bar, tearoff=0)
         menu_bar.add_cascade(label="编辑", menu=menu1)
         # menu1.add_command(label="Do Nothing")
-        # menu1.add_separator()
+        menu1.add_separator()
         menu1.add_command(label="退出", command=self.root.quit)
 
-        # menu2 = Menu(menu_bar, tearoff=0)
-        # menu_bar.add_cascade(label="更多", menu=menu2)
-        # menu2.add_command(label="New Job", image=img_game, compound="left", command=lambda: gamerun())
-
+        menu2 = Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label="更多", menu=menu2)
+        # menu2.add_command(label="New Job", image=img_game, compound="left",
+        #                   command=lambda: webbrowser.open("https://bearfly1990.github.io/"))
+        #
         # menu2.add_command(label="Tkinter", image=img_help, compound="left", command=
-        # lambda: webbrowser.open("http://effbot.org/tkinterbook/tkinter-index.htm"))
+        # lambda: webbrowser.open("https://bearfly1990.github.io/"))
 
     def open_file(self):
         self.entry_open_file.delete(0, tk.END)
