@@ -155,12 +155,10 @@ class DataProcessor():
         col_start_char = OpenpyxlHelper.get_column_letter_from_str_by_diff(col_start_char, diff)
         row_current = row_start
         for index, row in df_summary.iterrows():
-            # sum_value = 0.0
             for i, crop in enumerate(CROPS_LIST):
                 cell = sheet_summary.cell(row=row_current,
                                           column=OpenpyxlHelper.get_column_index_from_str(col_start_char) + i)
                 cell.value = row[i]
-                # sum_value = sum_value + row[i]
                 cell.number_format = '#,##0.00'
 
             cell = sheet_summary.cell(
