@@ -4,7 +4,7 @@ from PIL import ImageTk
 from tkinter import ttk
 from tkinter import messagebox
 from tkinter import *
-from src.ui.tkinter import UIRoot
+from app.common.tkinter import UIRoot
 
 
 class Survey():

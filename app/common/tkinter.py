@@ -48,5 +48,5 @@ class UIRoot(object):
 
     def init_control_buttons(self, row=0):
         self.frame_control = self.create_new_frame()
-        tk.Button(self.frame_control, text='Start', command=self.do_ok).grid(row=row, column=0, sticky=tk.W, pady=4)
-        tk.Button(self.frame_control, text='Quit', command=self.frame.quit).grid(row=row, column=1, sticky=tk.W, pady=4)
+        tk.Button(self.frame_control, text='开始', command=self.do_ok).grid(row=row, column=0, sticky=tk.W, pady=4)
+        tk.Button(self.frame_control, text='退出', command=self.frame.quit).grid(row=row, column=1, sticky=tk.W, pady=4)
