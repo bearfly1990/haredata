@@ -5,6 +5,7 @@ from app.common.io import PathUtils
 from app.common.log import logger
 from openpyxl.styles import Alignment
 from openpyxl.utils import get_column_letter, column_index_from_string
+from functools import reduce
 
 CROPS_LIST = []
 AREA_LIST = ['DSMC', 'DSDM', 'QXDM', 'QXMC', 'CUNDM', 'CUNMC']
@@ -36,10 +37,59 @@ class OpenpyxlHelper:
         return cls.get_column_index_from_str(val_str) + diff
 
 
-class DataProcessor():
+class ReadHelper:
+    def __init__(self):
+        pass
+
+    def read_input(self, file):
+        global CROPS_LIST
+        global AREA_CROPS_LIST
+        df_sheets = pd.read_excel(
+            file, sheet_name=['权重', '未裁剪', '裁剪'], engine='openpyxl',
+            converters={'DSDM': str, 'QXDM': str, 'CUNDM': str})
+
+
+
+        df_sheet_weight = df_sheets['权重'].dropna(axis=0)
+
+        CROPS_LIST = list(df_sheets['裁剪'].columns)
+        for area in AREA_LIST:
+            if area in CROPS_LIST:
+                CROPS_LIST.remove(area)
+
+        AREA_CROPS_LIST = AREA_LIST + CROPS_LIST
+
+        df_sheet_clip = df_sheets['裁剪'][
+            ['CUNDM'] + CROPS_LIST].dropna(axis=0)
+
+        df_sheet_unclipped = df_sheets['未裁剪'][
+            ['CUNDM'] + CROPS_LIST].dropna(axis=0)
+
+        dfs = [df_sheet_clip, df_sheet_weight]
+        df_sheet_clip = reduce(lambda left,right: pd.merge(left, right, on='CUNDM', how='left'), dfs)
+        df_sheet_clip = df_sheet_clip[
+            ['DSDM','QXDM','CUNDM'] + CROPS_LIST].dropna(axis=0)
+
+        dfs = [df_sheet_unclipped, df_sheet_weight]
+        df_sheet_unclipped = reduce(lambda left,right: pd.merge(left, right, on='CUNDM', how='left'), dfs)
+        df_sheet_unclipped = df_sheet_unclipped[
+            ['DSDM','QXDM','CUNDM'] + CROPS_LIST].dropna(axis=0)
+        # print(df_sheet_unclipped.columns)
+        # exit()
+        # df_sheet_clip = pd.merge(df_sheet_clip, df_sheet_weight, how='left', on=['CUNDM'], left_on=None,
+        #                       right_on=None,
+        #                       left_index=False, right_index=False, sort=False,
+        #                       suffixes=('_x', '_y'), copy=True, indicator=False)
+
+        return {'权重': df_sheet_weight, '裁剪': df_sheet_clip, '未裁剪': df_sheet_unclipped, 'CROPS': CROPS_LIST}
+
+
+class DataProcessor:
     style = OpenpyxlHelper()
+    reader = ReadHelper()
 
     def __init__(self):
+        self.crops_selected = None
         self.field_input_file = None
         self.df_sheet_weight = None
         self.df_sheet_clip = None
@@ -73,30 +123,30 @@ class DataProcessor():
     # ataFrame.to_excel(excel_writer, sheet_name='Sheet1', na_rep='', float_format=None, columns=None, header=True,
     # index=True, index_label=None, startrow=0, startcol=0, engine=None, merge_cells=True,
     # encoding=None, inf_rep='inf', verbose=True, freeze_panes=None)
-    def read_input(self):
-        global CROPS_LIST
-        global AREA_CROPS_LIST
-        df_sheets = pd.read_excel(
-            self.field_input_file, sheet_name=['权重', '未裁剪', '裁剪'], engine='openpyxl',
-            converters={'DSDM': str, 'QXDM': str, 'CUNDM': str})
-        # self.input_sheet_name = list(df_sheets)[0]
-        # if len(list(df_sheets)) > 1:
-        #     logger.error('文件sheet只能有一个，请选择正确的文件')
-        #     return
-
-        self.df_sheet_weight = df_sheets['权重'].dropna(axis=0)
-
-        CROPS_LIST = list(df_sheets['裁剪'].columns)
-        for area in AREA_LIST:
-            CROPS_LIST.remove(area)
-
-        AREA_CROPS_LIST = AREA_LIST + CROPS_LIST
-
-        self.df_sheet_clip = df_sheets['裁剪'][
-            ['DSDM', 'QXDM', 'CUNDM'] + CROPS_LIST].dropna(axis=0)
-        self.df_sheet_unclipped = df_sheets['未裁剪'][
-            ['DSDM', 'QXDM', 'CUNDM'] + CROPS_LIST].dropna(axis=0)
-        return df_sheets
+    # def read_input(self):
+    #     global CROPS_LIST
+    #     global AREA_CROPS_LIST
+    #     df_sheets = pd.read_excel(
+    #         self.field_input_file, sheet_name=['权重', '未裁剪', '裁剪'], engine='openpyxl',
+    #         converters={'DSDM': str, 'QXDM': str, 'CUNDM': str})
+    #     # self.input_sheet_name = list(df_sheets)[0]
+    #     # if len(list(df_sheets)) > 1:
+    #     #     logger.error('文件sheet只能有一个，请选择正确的文件')
+    #     #     return
+    #
+    #     self.df_sheet_weight = df_sheets['权重'].dropna(axis=0)
+    #
+    #     CROPS_LIST = list(df_sheets['裁剪'].columns)
+    #     for area in AREA_LIST:
+    #         CROPS_LIST.remove(area)
+    #
+    #     AREA_CROPS_LIST = AREA_LIST + CROPS_LIST
+    #
+    #     self.df_sheet_clip = df_sheets['裁剪'][
+    #         ['DSDM', 'QXDM', 'CUNDM'] + CROPS_LIST].dropna(axis=0)
+    #     self.df_sheet_unclipped = df_sheets['未裁剪'][
+    #         ['DSDM', 'QXDM', 'CUNDM'] + CROPS_LIST].dropna(axis=0)
+    #     return df_sheets
 
     def generate_output(self):
         new_file = PathUtils.add_flag_to_file_name(
@@ -170,8 +220,37 @@ class DataProcessor():
             cell.number_format = '#,##0.00'
             row_current = row_current + 1
 
-    @staticmethod
-    def write_summary_city_sum(sheet_summary, df_summary, row_start, col_start_char, diff):
+    def write_summary_city_sum_crops_factor(self, sheet_summary, df_summary, row_start, col_start_char, diff):
+        # col_start_char = OpenpyxlHelper.get_column_letter_from_str_by_diff(col_start_char, diff)
+        row_current = row_start
+        for index, row in df_summary.iterrows():
+            cells_crops_selected_clipped = []
+            cells_crops_selected_unclipped = []
+
+            for i, crop in enumerate(CROPS_LIST):
+                cell = sheet_summary.cell(
+                    row=row_current,
+                    column=OpenpyxlHelper.get_column_index_from_str(col_start_char) + 3 + i)
+
+                if df_summary.columns[i + 2] in self.crops_selected:
+                    cell_str = f'{cell.column_letter}{cell.row}'
+                    cells_crops_selected_clipped.append(cell_str)
+                    # cells_crops_selected_clipped.append(sheet_summary[cell_str].value)
+                    cell_str = f'{cell.column_letter}{cell.row + diff}'
+                    cells_crops_selected_unclipped.append(cell_str)
+                    # cells_crops_selected_unclipped.append(sheet_summary[cell_str].value)
+            cell = sheet_summary.cell(
+                row=row_current,
+                column=OpenpyxlHelper.get_column_index_from_str(col_start_char) + 3 + len(CROPS_LIST))
+
+            cell.value = f"=sum({'+'.join(cells_crops_selected_clipped)})/sum({'+'.join(cells_crops_selected_unclipped)})"
+            # cell.number_format = '#,##0.0000'
+            sheet_summary.column_dimensions[
+                OpenpyxlHelper.get_column_letter_from_str_by_diff(col_start_char, 3 + len(CROPS_LIST))].width = 20
+            # cell.value = sum(cells_crops_selected_clipped) / sum(cells_crops_selected_unclipped)
+            row_current = row_current + 1
+
+    def write_summary_city_sum(self, sheet_summary, df_summary, row_start, col_start_char, diff):
         col_start_char = OpenpyxlHelper.get_column_letter_from_str_by_diff(col_start_char, diff)
         row_current = row_start
         for index, row in df_summary.iterrows():
@@ -183,19 +262,24 @@ class DataProcessor():
                                    col_start_char, 1)).value = row[1]
 
             start_cell = f'{OpenpyxlHelper.get_column_letter_from_str_by_diff(col_start_char, 3)}{row_current}'
-            ended_cell = f'{OpenpyxlHelper.get_column_letter_from_str_by_diff(col_start_char, 13)}{row_current}'
+            ended_cell = f'{OpenpyxlHelper.get_column_letter_from_str_by_diff(col_start_char, 3 + len(CROPS_LIST))}{row_current}'
             formula = f'=sum({start_cell}:{ended_cell})'
-            # print(formula)
             cell = sheet_summary.cell(row=row_current,
                                       column=OpenpyxlHelper.get_column_index_from_str(col_start_char) + 2)
             cell.value = formula
             cell.number_format = '#,##0.00'
+
             for i, crop in enumerate(CROPS_LIST):
                 cell = sheet_summary.cell(
                     row=row_current,
                     column=OpenpyxlHelper.get_column_index_from_str(col_start_char) + 3 + i)
                 cell.value = row[i + 2]
                 cell.number_format = '#,##0.00'
+                # if df_summary.columns[i+2] in self.crops_selected:
+                #     cell_str = f'{cell.column_letter}{cell.row}'
+                # print(cell_str, sheet_summary[cell_str].value)
+                # sum_crops_selected = sum_crops_selected + row[i + 2]
+            # print(sum_crops_selected)
             row_current = row_current + 1
 
     def write_summary_county_sum(self, sheet_summary, df_summary, row_start, col_start_char, diff):
@@ -203,7 +287,9 @@ class DataProcessor():
         row_current = row_start
         city_row = row_start
         city_code_current = None
+        # print(df_summary)
         for index, row in df_summary.iterrows():
+            # print(index, )
             if index[0] != city_code_current:
                 sheet_summary.cell(row=row_current,
                                    column=OpenpyxlHelper.get_column_index_from_str(col_start_char)).value = index[0]
@@ -225,6 +311,30 @@ class DataProcessor():
                     cell.value = f'=sum({cell_start}:{cell_ended})'
                     cell.number_format = '#,##0.00'
                 city_row = row_current
+                row_current = row_current + 1
+                sheet_summary.cell(row=row_current,
+                                   column=OpenpyxlHelper.get_column_index_from_str(col_start_char)).value = index[1]
+                sheet_summary.cell(row=row_current,
+                                   column=OpenpyxlHelper.get_column_index_from_str(
+                                       col_start_char)).alignment = self.style.align_right
+
+                sheet_summary.cell(row=row_current,
+                                   column=OpenpyxlHelper.get_column_index_from_str(col_start_char) + 1).value = index[3]
+
+                cell_start = f'{OpenpyxlHelper.get_column_letter_from_str_by_diff(col_start_char, 3)}{row_current}'
+                cell_ended = f'{OpenpyxlHelper.get_column_letter_from_str_by_diff(col_start_char, len(CROPS_LIST) - 1 + 3)}{row_current}'
+
+                cell = sheet_summary.cell(row=row_current, column=OpenpyxlHelper.get_column_index_from_str(
+                    col_start_char) + 2)
+                cell.value = f'=sum({cell_start}:{cell_ended})'
+                cell.number_format = '#,##0.00'
+
+                for i, crop in enumerate(CROPS_LIST):
+                    cell = sheet_summary.cell(row=row_current,
+                                              column=OpenpyxlHelper.get_column_index_from_str(
+                                                  col_start_char) + i + 3)
+                    cell.value = row[i]
+                    cell.number_format = '#,##0.00'
             else:
                 sheet_summary.cell(row=row_current,
                                    column=OpenpyxlHelper.get_column_index_from_str(col_start_char)).value = index[1]
@@ -260,6 +370,87 @@ class DataProcessor():
             cell.value = f'=sum({cell_start}:{cell_ended})'
             cell.number_format = '#,##0.00'
 
+    def write_summary_county_sum_crops_factor(self, sheet_summary, df_summary, row_start, col_start_char, diff):
+        # col_start_char = OpenpyxlHelper.get_column_letter_from_str_by_diff(col_start_char, diff)
+        row_current = row_start
+        city_row = row_start
+        city_code_current = None
+        # print(df_summary)
+        for index, row in df_summary.iterrows():
+            # print(index, )
+            cells_crops_selected_clipped = []
+            cells_crops_selected_unclipped = []
+            if index[0] != city_code_current:
+                # 第一个市
+                city_row = row_current
+                city_code_current = index[0]
+                for i, crop in enumerate(CROPS_LIST):
+                    cell = sheet_summary.cell(row=city_row,
+                                              column=OpenpyxlHelper.get_column_index_from_str(
+                                                  col_start_char) + i + 3)
+                    if df_summary.columns[i] in self.crops_selected:
+                        cell_str = f'{cell.column_letter}{cell.row}'
+                        cells_crops_selected_clipped.append(cell_str)
+                        cell_str = f'{cell.column_letter}{cell.row + diff}'
+                        cells_crops_selected_unclipped.append(cell_str)
+
+                cell = sheet_summary.cell(
+                    row=city_row,
+                    column=OpenpyxlHelper.get_column_index_from_str(col_start_char) + 3 + len(CROPS_LIST))
+
+                cell.value = f"=sum({'+'.join(cells_crops_selected_clipped)})/sum({'+'.join(cells_crops_selected_unclipped)})"
+                # cell.number_format = '#,##0.0000'
+                sheet_summary.column_dimensions[
+                    OpenpyxlHelper.get_column_letter_from_str_by_diff(col_start_char, 3 + len(CROPS_LIST))].width = 20
+
+                row_current = row_current + 1
+                # 第一个县区
+                cells_crops_selected_clipped = []
+                cells_crops_selected_unclipped = []
+                for i, crop in enumerate(CROPS_LIST):
+                    cell = sheet_summary.cell(row=row_current,
+                                              column=OpenpyxlHelper.get_column_index_from_str(
+                                                  col_start_char) + i + 3)
+                    if df_summary.columns[i] in self.crops_selected:
+                        cell_str = f'{cell.column_letter}{cell.row}'
+                        cells_crops_selected_clipped.append(cell_str)
+                        cell_str = f'{cell.column_letter}{cell.row + diff}'
+                        cells_crops_selected_unclipped.append(cell_str)
+
+                cell = sheet_summary.cell(
+                    row=row_current,
+                    column=OpenpyxlHelper.get_column_index_from_str(col_start_char) + 3 + len(CROPS_LIST))
+
+                cell.value = f"=sum({'+'.join(cells_crops_selected_clipped)})/sum({'+'.join(cells_crops_selected_unclipped)})"
+                # cell.number_format = '#,##0.0000'
+                sheet_summary.column_dimensions[
+                    OpenpyxlHelper.get_column_letter_from_str_by_diff(col_start_char, 3 + len(CROPS_LIST))].width = 20
+
+                row_current = row_current + 1
+            else:
+                cells_crops_selected_clipped = []
+                cells_crops_selected_unclipped = []
+                for i, crop in enumerate(CROPS_LIST):
+                    cell = sheet_summary.cell(row=row_current,
+                                              column=OpenpyxlHelper.get_column_index_from_str(
+                                                  col_start_char) + i + 3)
+
+                    if df_summary.columns[i] in self.crops_selected:
+                        cell_str = f'{cell.column_letter}{cell.row}'
+                        cells_crops_selected_clipped.append(cell_str)
+                        cell_str = f'{cell.column_letter}{cell.row + diff}'
+                        cells_crops_selected_unclipped.append(cell_str)
+                cell = sheet_summary.cell(
+                    row=row_current,
+                    column=OpenpyxlHelper.get_column_index_from_str(col_start_char) + 3 + len(CROPS_LIST))
+
+                cell.value = f"=sum({'+'.join(cells_crops_selected_clipped)})/sum({'+'.join(cells_crops_selected_unclipped)})"
+                # cell.number_format = '#,##0.0000'
+                sheet_summary.column_dimensions[
+                    OpenpyxlHelper.get_column_letter_from_str_by_diff(col_start_char, 3 + len(CROPS_LIST))].width = 20
+
+                row_current = row_current + 1
+
     @classmethod
     def write_header_label(cls, sheet_summary, str_list, col_start_str, row_start, axis=0):
         col_start_index = OpenpyxlHelper.get_column_index_from_str(col_start_str)
@@ -273,28 +464,38 @@ class DataProcessor():
                 row_start = row_start + 1
 
     @classmethod
-    def write_province_header_label(cls, sheet_summary):
-        cls.write_header_label(sheet_summary, ['未裁剪', '省权重', '市权重合计', '县权重合计'], 'A', 1, axis=1)
+    def write_province_header_label(cls, sheet_summary, diff):
+        cls.write_header_label(sheet_summary, ['裁剪', '省权重', '市权重合计', '县权重合计'], 'A', 1, axis=1)
         cls.write_header_label(sheet_summary, ['合计'], 'C', 1, axis=1)
         cls.write_header_label(sheet_summary, CROPS_LIST, 'D', 1, axis=0)
-        col_str = OpenpyxlHelper.get_column_letter_from_str_by_diff('C', len(CROPS_LIST) + 1)
-        cls.write_header_label(sheet_summary, ['裁剪', '省权重', '市权重合计', '县权重合计'], col_str, 1, axis=1)
-        col_str = OpenpyxlHelper.get_column_letter_from_str_by_diff('C', len(CROPS_LIST) + 3)
-        cls.write_header_label(sheet_summary, ['合计'], col_str, 1, axis=1)
-        col_str = OpenpyxlHelper.get_column_letter_from_str_by_diff('C', len(CROPS_LIST) + 4)
-        cls.write_header_label(sheet_summary, CROPS_LIST, col_str, 1, axis=0)
+        cls.write_header_label(sheet_summary, ['小品种调整因子'],
+                               OpenpyxlHelper.get_column_letter_from_str_by_diff('D', len(CROPS_LIST)), 1, axis=0)
+        cls.write_header_label(sheet_summary, ['未裁剪', '省权重', '市权重合计', '县权重合计'], 'A', 1 + diff, axis=1)
+        cls.write_header_label(sheet_summary, ['合计'], 'C', 1 + diff, axis=1)
+        cls.write_header_label(sheet_summary, CROPS_LIST, 'D', 1 + diff, axis=0)
+
+        # col_str = OpenpyxlHelper.get_column_letter_from_str_by_diff('C', len(CROPS_LIST) + 1)
+        # cls.write_header_label(sheet_summary, ['裁剪', '省权重', '市权重合计', '县权重合计'], col_str, 1, axis=1)
+        #
+        # col_str = OpenpyxlHelper.get_column_letter_from_str_by_diff('C', len(CROPS_LIST) + 3)
+        # cls.write_header_label(sheet_summary, ['合计'], col_str, 1, axis=1)
+        #
+        # col_str = OpenpyxlHelper.get_column_letter_from_str_by_diff('C', len(CROPS_LIST) + 4)
+        # cls.write_header_label(sheet_summary, CROPS_LIST, col_str, 1, axis=0)
 
     @classmethod
-    def write_city_header_label(cls, sheet_summary):
-        cls.write_header_label(sheet_summary, ['未裁剪', '市权重合计', '县权重合计'], 'A', 1, axis=1)
+    def write_city_header_label(cls, sheet_summary, row_diff):
+        cls.write_header_label(sheet_summary, ['裁剪', '市权重合计', '县权重合计'], 'A', 1, axis=1)
         cls.write_header_label(sheet_summary, ['合计'], 'C', 1, axis=1)
         cls.write_header_label(sheet_summary, CROPS_LIST, 'D', 1, axis=0)
-        col_str = OpenpyxlHelper.get_column_letter_from_str_by_diff('C', len(CROPS_LIST) + 1)
-        cls.write_header_label(sheet_summary, ['裁剪', '市权重合计', '县权重合计'], col_str, 1, axis=1)
-        col_str = OpenpyxlHelper.get_column_letter_from_str_by_diff('C', len(CROPS_LIST) + 3)
-        cls.write_header_label(sheet_summary, ['合计'], col_str, 1, axis=1)
-        col_str = OpenpyxlHelper.get_column_letter_from_str_by_diff('C', len(CROPS_LIST) + 4)
-        cls.write_header_label(sheet_summary, CROPS_LIST, col_str, 1, axis=0)
+        cls.write_header_label(sheet_summary, ['小品种调整因子'],
+                               OpenpyxlHelper.get_column_letter_from_str_by_diff('D', len(CROPS_LIST)), 1, axis=0)
+        # col_str = OpenpyxlHelper.get_column_letter_from_str_by_diff('C', len(CROPS_LIST) + 1)
+        cls.write_header_label(sheet_summary, ['未裁剪', '市权重合计', '县权重合计'], 'A', 1 + row_diff, axis=1)
+        # col_str = OpenpyxlHelper.get_column_letter_from_str_by_diff('C', len(CROPS_LIST) + 3)
+        cls.write_header_label(sheet_summary, ['合计'], 'C', 1 + row_diff, axis=1)
+        # col_str = OpenpyxlHelper.get_column_letter_from_str_by_diff('C', len(CROPS_LIST) + 4)
+        cls.write_header_label(sheet_summary, CROPS_LIST, 'D', 1 + row_diff, axis=0)
 
     @classmethod
     def auto_width(cls, sheet):
@@ -327,36 +528,50 @@ class DataProcessor():
         # sheet_summary_city = workbook['市级权限输出界面']
 
         # print(self.df_crops_summary)
-        self.write_province_header_label(sheet_summary)
+        row_diff_province = len(self.df_process_unclipped_city_summary) + 6
+        self.write_province_header_label(sheet_summary, row_diff_province)
         # col_unclip_start = self.write_header(sheet_summary, CROPS_LIST, 1, 'D')
 
-        self.write_summary(sheet_summary, self.df_crops_summary_province_unclipped, 2, 'D', 0)
-        self.write_summary(sheet_summary, self.df_crops_summary_province_clipped, 2, 'D', len(CROPS_LIST) + 3)
+        self.write_summary(sheet_summary, self.df_crops_summary_province_clipped, 2, 'D', 0)
+        self.write_summary(sheet_summary, self.df_crops_summary_province_unclipped, 2 + row_diff_province, 'D', 0)
 
-        self.write_summary(sheet_summary, self.df_crops_summary_city_unclipped, 3, 'D', 0)
-        self.write_summary(sheet_summary, self.df_crops_summary_city_clipped, 3, 'D', len(CROPS_LIST) + 3)
-        self.write_summary(sheet_summary, self.df_crops_summary_county_unclipped, 4, 'D', 0)
-        self.write_summary(sheet_summary, self.df_crops_summary_county_clipped, 4, 'D', len(CROPS_LIST) + 3)
+        self.write_summary(sheet_summary, self.df_crops_summary_city_clipped, 3, 'D', 0)
+        self.write_summary(sheet_summary, self.df_crops_summary_city_unclipped, 3 + row_diff_province, 'D', 0)
+        self.write_summary(sheet_summary, self.df_crops_summary_county_clipped, 4, 'D', 0)
+        self.write_summary(sheet_summary, self.df_crops_summary_county_unclipped, 4 + row_diff_province, 'D', 0)
 
-        self.write_summary_city_sum(sheet_summary, self.df_process_unclipped_city_summary, 5, 'A', 0)
-        self.write_summary_city_sum(sheet_summary, self.df_process_clip_city_summary, 5, 'A', len(CROPS_LIST) + 3)
-
-        self.write_city_header_label(sheet_summary_city)
-        self.write_summary(sheet_summary_city, self.df_crops_summary_city_unclipped, 2, 'D', 0)
-        self.write_summary(sheet_summary_city, self.df_crops_summary_city_clipped, 2, 'D', len(CROPS_LIST) + 3)
-        self.write_summary(sheet_summary_city, self.df_crops_summary_county_unclipped, 3, 'D', 0)
-        self.write_summary(sheet_summary_city, self.df_crops_summary_county_clipped, 3, 'D', len(CROPS_LIST) + 3)
+        self.write_summary_city_sum(sheet_summary, self.df_process_clip_city_summary, 5, 'A', 0)
+        self.write_summary_city_sum(sheet_summary, self.df_process_unclipped_city_summary, 5 + row_diff_province, 'A',
+                                    0)
 
         df_process_unclipped_county_group_by = self.df_process_unclipped_county.groupby(
             by=['DSDM', 'QXDM', 'DSMC', 'QXMC'])[CROPS_LIST].sum()
         df_process_clipped_county_group_by = self.df_process_clip_county.groupby(
             by=['DSDM', 'QXDM', 'DSMC', 'QXMC'])[CROPS_LIST].sum()
-        self.write_summary_county_sum(sheet_summary_city, df_process_unclipped_county_group_by, 4, 'A', 0)
-        self.write_summary_county_sum(sheet_summary_city, df_process_clipped_county_group_by, 4, 'A',
-                                      len(CROPS_LIST) + 3)
+
+        df_process_unclipped_city_group_by = self.df_process_unclipped_county.groupby(
+            by=['DSDM', 'DSMC'])[CROPS_LIST].sum()
+
+        row_diff_city = len(df_process_unclipped_county_group_by) + len(df_process_unclipped_city_group_by) + 5
+
+        self.write_city_header_label(sheet_summary_city, row_diff_city)
+        self.write_summary(sheet_summary_city, self.df_crops_summary_city_clipped, 2, 'D', 0)
+        self.write_summary(sheet_summary_city, self.df_crops_summary_city_unclipped, 2 + row_diff_city, 'D', 0)
+        self.write_summary(sheet_summary_city, self.df_crops_summary_county_clipped, 3, 'D', 0)
+        self.write_summary(sheet_summary_city, self.df_crops_summary_county_unclipped, 3 + row_diff_city, 'D', 0)
+
+        self.write_summary_county_sum(sheet_summary_city, df_process_clipped_county_group_by, 4, 'A', 0)
+        self.write_summary_county_sum(sheet_summary_city, df_process_unclipped_county_group_by, 4 + row_diff_city, 'A',
+                                      0)
 
         self.auto_width(sheet_summary)
         self.auto_width(sheet_summary_city)
+
+        self.write_summary_city_sum_crops_factor(sheet_summary, self.df_process_clip_city_summary, 5, 'A',
+                                                 row_diff_province)
+
+        self.write_summary_county_sum_crops_factor(sheet_summary_city, df_process_clipped_county_group_by, 4, 'A',
+                                                   row_diff_city)
 
         workbook.save(filename=new_file)
         logger.info(f'新文件：{new_file} 已生成！')
@@ -433,7 +648,9 @@ class DataProcessor():
                               right_on=None,
                               left_index=False, right_index=False, sort=False,
                               suffixes=('_x', '_y'), copy=True, indicator=False)
-
+        # print(self.df_sheet_weight.columns)
+        # print(df_sheet_crop.columns)
+        # print(df_process.columns)
         for crop in CROPS_LIST:
             logger.info(f'计算{level}级{clip_flag}:{crop}...')
             df_process[crop] = df_process.apply(
@@ -442,8 +659,11 @@ class DataProcessor():
         return df_process
 
     def process(self):
-        # self.df_sheet_weight =
-        self.read_input()
+        df_sheets = self.reader.read_input(self.field_input_file)
+        self.df_sheet_weight = df_sheets['权重']
+        self.df_sheet_clip = df_sheets['裁剪']
+        self.df_sheet_unclipped = df_sheets['未裁剪']
+
         self.process_weight()
 
         self.df_process_clip_province = self.process_clip('省')
@@ -468,7 +688,7 @@ class DataProcessor():
                                            self.df_crops_summary_city_unclipped,
                                            self.df_crops_summary_county_clipped,
                                            self.df_crops_summary_county_unclipped])
-
+                                           
         self.df_crops_summary_city = self.summary_crops_city(self.df_process_clip_province, '省', '剪裁')
         # print(self.df_crops_summary_city)
         self.df_crops_summary_city = pd.concat([self.df_crops_summary_city,
