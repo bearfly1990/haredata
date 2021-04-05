@@ -70,10 +70,14 @@ class DataProcessorUI(UIRoot):
 
     def open_file(self):
         self.entry_open_file.delete(0, tk.END)
-        self.entry_open_file.insert(tk.END, filedialog.askopenfilename(title='选择Excel文件',
+        file = filedialog.askopenfilename(title='选择Excel文件',
                                                                        filetypes=[('Excel', '*.xlsx'),
                                                                                   ('Excel', '*.xls'),
-                                                                                  ('All Files', '*')]))
+                                                                                  ('All Files', '*')])
+        # PathUtils.get_dir_name_from_full_path(file)
+        self.entry_open_file.insert(tk.END, file)
+
+        self.data_processor.field_input_file = self.entry_open_file.get()
 
         self.data_processor.field_input_file = self.entry_open_file.get()
 

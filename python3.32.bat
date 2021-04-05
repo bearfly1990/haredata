@@ -1,3 +1,4 @@
-set path=D:\ProgramDev\Python39-32\Scripts\;D:\ProgramDev\Python39-32\;%path%
+set path=C:\Python38-32\Scripts\;C:\Python38-32\;
+echo %path%
 python main.processor.py
 pause
