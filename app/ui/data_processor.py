@@ -79,8 +79,6 @@ class DataProcessorUI(UIRoot):
 
         self.data_processor.field_input_file = self.entry_open_file.get()
 
-        self.data_processor.field_input_file = self.entry_open_file.get()
-
     def init_base_info(self):
         frame = self.create_new_frame(text='选择需要处理的文件')
         # tk.Label(frame, text='选择文件').grid(row=row, column=column, sticky=tk.W)
